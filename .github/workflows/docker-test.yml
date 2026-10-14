@@ -1,0 +1,16 @@
+name: Docker Test on Self-Hosted
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:  
+
+jobs:
+  run-test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Docker container
+        run: docker run --rm alpine echo "Docker works on push!"
