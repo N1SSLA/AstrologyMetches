@@ -2,7 +2,7 @@ name: Docker Test on Self-Hosted
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:  
 
 jobs:
