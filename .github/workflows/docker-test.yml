@@ -12,6 +12,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Docker container
+      - name: Build Docker image
         shell: cmd
-        run: docker run --rm alpine echo "Docker works on push!"
+        run: docker build -t astro-test .
+
+      - name: Run tests in Docker
+        shell: cmd
+        run: docker run --rm astro-test
