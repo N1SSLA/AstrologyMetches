@@ -12,5 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Docker container
-        run: docker run --rm alpine echo "Docker works on push!"
+	- name: Run Docker container
+  	shell: cmd
+  	run: docker run --rm alpine echo "Docker works on push!"
