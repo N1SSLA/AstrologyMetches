@@ -1,20 +1,38 @@
 name: Docker Test on Self-Hosted
 
 on:
+  pull_request:
+    branches: [ "main", "develop" ]
   push:
     branches: [ "main" ]
-  workflow_dispatch:
 
 jobs:
-  run-test:
-    runs-on: self-hosted
+  # run-test:
+  #   runs-on: self-hosted
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Build Docker image
+  #       shell: cmd
+  #       run: docker build -t astro-test .
+
+  #     - name: Run tests in Docker
+  #       shell: cmd
+  #       run: docker run --rm astro-test
+
+  deploy:
+    needs: run-test
+    runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout code
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
       - name: Build Docker image
         shell: cmd
         run: docker build -t astro-test .
+
 
       - name: Run tests in Docker
         shell: cmd
