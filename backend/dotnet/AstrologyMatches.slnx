@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Host/">
+    <Project Path="Host/AstrologyMatches.Api/AstrologyMatches.Api.csproj" />
+  </Folder>
+  <Folder Name="/Shared/">
+    <Project Path="Shared/AstrologyMatches.Shared/AstrologyMatches.Shared.csproj" />
+  </Folder>
+</Solution>

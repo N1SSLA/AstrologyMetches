@@ -1,0 +1,6 @@
+/notes
+# .NET
+bin/
+obj/
+.vs/
+*.user
