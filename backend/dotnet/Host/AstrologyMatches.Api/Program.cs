@@ -1,5 +1,6 @@
 using AstrologyMatches.Api.Extensions;
 using AstrologyMatches.Api.Middleware;
+using AstrologyMatches.Profiles.Infrastructure;
 using AstrologyMatches.Users.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,7 @@ builder.Services.AddSwaggerWithJwt();
 builder.Services.AddAutoMapper(config => config.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"]);
 
 builder.Services.AddUsersModule(builder.Configuration);
+builder.Services.AddProfilesModule(builder.Configuration);
 
 var app = builder.Build();
 

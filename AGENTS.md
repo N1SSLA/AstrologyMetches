@@ -98,7 +98,7 @@ backend/dotnet/
 - XML-документация краткая: `<summary>` в 1–2 строки на публичные контроллеры и их действия, интерфейсы сервисов, `Contracts`, DTO и сущности Domain. `<param>` и `<returns>` пишем, только если смысл неочевиден из имени. Пересказывать код в документации не нужно.
 - API — контроллеры с `[ApiController]`, маршруты `api/<module>/...`. Контроллер тонкий: принял запрос, вызвал сервис, вернул результат.
 - Бизнес-логика живёт в сервисах Application и методах сущностей Domain. В контроллерах, хабах и DbContext её нет.
-- DTO — `record`. Маппинг сущность ↔ DTO делаем через AutoMapper 16.x (версии ниже 15.1.1 уязвимы, CVE-2026-32933; ключ Community-лицензии — `AutoMapper:LicenseKey` в user-secrets, задаётся один раз в Host): у каждого модуля свой профиль в Application (`ProfilesMappingProfile : Profile`), регистрируется в `Add<Module>Module(...)` через `services.AddAutoMapper(config => config.AddProfile<...>())`. В профилях только перекладывание полей, бизнес-логику туда не прячем. Если маппинг поля требует нетривиального `ForMember`, лучше посчитать значение в сервисе.
+- DTO — `record`. Маппинг сущность ↔ DTO делаем через AutoMapper не ниже 16.3.0 (более ранние версии уязвимы: CVE-2026-32933, CVE-2026-128081, CVE-2026-128082; ключ Community-лицензии — `AutoMapper:LicenseKey` в user-secrets, задаётся один раз в Host): у каждого модуля свой профиль в Application (`ProfilesMappingProfile : Profile`), регистрируется в `Add<Module>Module(...)` через `services.AddAutoMapper(config => config.AddProfile<...>())`. В профилях только перекладывание полей, бизнес-логику туда не прячем. Если маппинг поля требует нетривиального `ForMember`, лучше посчитать значение в сервисе.
 - Валидация: DataAnnotations на DTO запросов, проверки бизнес-правил — в сервисах.
 - Ошибки: свои исключения (`NotFoundException`, `ValidationException`, `ForbiddenException`, `ConflictException`) лежат в `Shared/Exceptions`. В Host есть `ExceptionHandlingMiddleware`: он ловит исключение, по его типу выбирает статус-код (404 / 400 / 403 / 409, остальное — 500), пишет ошибку в лог и отвечает `ProblemDetails`. Стектрейс наружу не отдаём, в контроллерах `try/catch` ради статус-кодов не пишем.
 - Методы с I/O — `async`, с суффиксом `Async`; `CancellationToken` передаём от контроллера до EF. Действия контроллеров тоже с `Async` (в Host выключен `SuppressAsyncSuffixInActionNames`, поэтому `CreatedAtAction(nameof(GetMeAsync), ...)` работает).
@@ -140,7 +140,9 @@ backend/dotnet/
 - Файлы фотографий лежат в MinIO, а в БД (`profile_photos`) — только метаданные.
 - Ключ объекта — `{profileId}/{photoId}`.
 - Работаем через интерфейс `IPhotoStorage` (Profiles.Application), реализация на пакете `Minio` — в Profiles.Infrastructure. Остальной код про MinIO не знает.
-- На сервере проверяем тип (`image/jpeg`, `image/png`, `image/webp`) и размер файла.
+- На сервере проверяем тип (`image/jpeg`, `image/png`, `image/webp`) и размер файла. Тип определяем по первым байтам файла (`ImageFormat.DetectContentType`), а не по Content-Type из запроса. Лимиты: 5 МБ на файл, 6 фото на профиль (`ProfilePhoto`).
+- Загрузка идёт через API (`POST api/profiles/me/photos`, multipart). Клиенту фото отдаём presigned URL из MinIO (поле `Url` в DTO, живёт `Minio:UrlLifetimeMinutes`, по умолчанию 60 мин). Когда ссылка истечёт, клиент заново запрашивает список фото.
+- Настройки — секция `Minio` (`Endpoint`, `BucketName`, `UseSsl`); `AccessKey` и `SecretKey` лежат в user-secrets. MinIO должен быть доступен из браузера по `Minio:Endpoint`: на этот адрес указывают presigned URL.
 
 ## WebUI (React + TypeScript)
 
@@ -172,13 +174,18 @@ Backend (из корня репозитория; подробности, в то
 dotnet tool restore
 dotnet user-secrets set "Jwt:Key" "<строка от 32 символов>" --project backend/dotnet/Host/AstrologyMatches.Api
 dotnet user-secrets set "ConnectionStrings:Database" "<строка подключения>" --project backend/dotnet/Host/AstrologyMatches.Api
+dotnet user-secrets set "Minio:AccessKey" "<логин MinIO>" --project backend/dotnet/Host/AstrologyMatches.Api
+dotnet user-secrets set "Minio:SecretKey" "<пароль MinIO>" --project backend/dotnet/Host/AstrologyMatches.Api
 dotnet ef database update --context UsersDbContext --project backend/dotnet/Modules/Users/AstrologyMatches.Users.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api
+dotnet ef database update --context ProfilesDbContext --project backend/dotnet/Modules/Profiles/AstrologyMatches.Profiles.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api
 dotnet build backend/dotnet
 dotnet test backend/dotnet
 dotnet run --project backend/dotnet/Host/AstrologyMatches.Api --launch-profile http
 ```
 
 Swagger UI: http://localhost:5198/swagger, проверка живости: http://localhost:5198/health.
+
+Docker-образы указываем только с фиксированной версией: тег с точной версией (`postgres:17.11`) или digest (`image@sha256:...`), если у образа нет тегов с версией. Плавающие теги (`latest`, `17`) не используем. Актуальный список образов — в `backend/dotnet/README.md`.
 
 > Целевые команды, которых ещё нет: `docker compose up -d db minio` (ждём compose от devops), `cd src/WebUI && npm run dev`, `cd src/WebUI && npm run lint && npm test`.
 
@@ -192,7 +199,6 @@ Swagger UI: http://localhost:5198/swagger, проверка живости: http
 ## Открытые вопросы — не решай сам
 
 Если задача упирается в один из них, предложи 2–3 варианта с плюсами и минусами и дождись решения:
-- как отдавать фото клиенту: presigned URL из MinIO или через API;
 - push-уведомления;
 - контракт с AstroService (согласуется с его владельцем).
 

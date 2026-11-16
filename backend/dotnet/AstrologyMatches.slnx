@@ -3,6 +3,11 @@
     <Project Path="Host/AstrologyMatches.Api/AstrologyMatches.Api.csproj" />
   </Folder>
   <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Profiles/">
+    <Project Path="Modules/Profiles/AstrologyMatches.Profiles.Application/AstrologyMatches.Profiles.Application.csproj" />
+    <Project Path="Modules/Profiles/AstrologyMatches.Profiles.Domain/AstrologyMatches.Profiles.Domain.csproj" />
+    <Project Path="Modules/Profiles/AstrologyMatches.Profiles.Infrastructure/AstrologyMatches.Profiles.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Modules/Users/">
     <Project Path="Modules/Users/AstrologyMatches.Users.Application/AstrologyMatches.Users.Application.csproj" />
     <Project Path="Modules/Users/AstrologyMatches.Users.Domain/AstrologyMatches.Users.Domain.csproj" />
@@ -12,6 +17,7 @@
     <Project Path="Shared/AstrologyMatches.Shared/AstrologyMatches.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AstrologyMatches.Profiles.Tests/AstrologyMatches.Profiles.Tests.csproj" />
     <Project Path="tests/AstrologyMatches.Users.Tests/AstrologyMatches.Users.Tests.csproj" />
   </Folder>
 </Solution>
