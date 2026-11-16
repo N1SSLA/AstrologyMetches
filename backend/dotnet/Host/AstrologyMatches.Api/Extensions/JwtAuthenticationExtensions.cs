@@ -26,6 +26,9 @@ public static class JwtAuthenticationExtensions
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                // Оставляем claim'ы как в токене («sub»), без переименования в длинные типы Microsoft
+                options.MapInboundClaims = false;
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,

@@ -1,14 +1,23 @@
 using AstrologyMatches.Api.Extensions;
 using AstrologyMatches.Api.Middleware;
+using AstrologyMatches.Users.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // По правилам проекта действия называются с суффиксом Async. Без этой настройки MVC отрезает суффикс,
+    // и CreatedAtAction(nameof(GetMeAsync), ...) не находит действие
+    options.SuppressAsyncSuffixInActionNames = false;
+});
 builder.Services.AddHealthChecks();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerWithJwt();
 
-// Сюда по мере готовности добавляются модули: builder.Services.AddUsersModule(builder.Configuration) и т.д.
+// Ключ лицензии AutoMapper задаём один раз здесь, а профили маппинга добавляет каждый модуль у себя
+builder.Services.AddAutoMapper(config => config.LicenseKey = builder.Configuration["AutoMapper:LicenseKey"]);
+
+builder.Services.AddUsersModule(builder.Configuration);
 
 var app = builder.Build();
 

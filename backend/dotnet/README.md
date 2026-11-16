@@ -24,9 +24,32 @@ docker run -d --name astro-minio -p 9000:9000 -p 9001:9001 -e MINIO_ROOT_USER=mi
 
 ```
 dotnet user-secrets set "Jwt:Key" "<случайная строка не короче 32 символов>" --project backend/dotnet/Host/AstrologyMatches.Api
+dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Port=5432;Database=astrology_matches;Username=postgres;Password=postgres" --project backend/dotnet/Host/AstrologyMatches.Api
 ```
 
-Без `Jwt:Key` приложение не запустится и напишет, чего не хватает.
+Без `Jwt:Key` или `ConnectionStrings:Database` приложение не запустится и напишет, чего не хватает.
+
+Необязательно: `AutoMapper:LicenseKey` — ключ бесплатной Community-лицензии AutoMapper. Без него AutoMapper работает и только пишет в лог предупреждение (для разработки это допустимо).
+
+## Миграции БД
+
+`dotnet-ef` подключён как локальный инструмент (`dotnet-tools.json` в корне репозитория). Один раз после клонирования:
+
+```
+dotnet tool restore
+```
+
+Применить миграции модуля (из корня репозитория, для каждого модуля своя команда):
+
+```
+dotnet ef database update --context UsersDbContext --project backend/dotnet/Modules/Users/AstrologyMatches.Users.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api
+```
+
+Новая миграция:
+
+```
+dotnet ef migrations add <Имя> --context UsersDbContext --project backend/dotnet/Modules/Users/AstrologyMatches.Users.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api --output-dir Persistence/Migrations
+```
 
 ## Запуск
 
@@ -44,6 +67,7 @@ dotnet run --project backend/dotnet/Host/AstrologyMatches.Api --launch-profile h
 ```
 Directory.Build.props            общие настройки проектов
 Host/AstrologyMatches.Api        Program.cs, middleware, Swagger, JWT
-Shared/AstrologyMatches.Shared   общие исключения и настройки JWT
-Modules/<Модуль>/...             модули (появятся на следующих этапах)
+Shared/AstrologyMatches.Shared   общие исключения, настройки JWT, GetUserId()
+Modules/Users/...                регистрация, вход, аккаунт (api/users)
+tests/AstrologyMatches.Users.Tests
 ```

@@ -98,10 +98,11 @@ backend/dotnet/
 - XML-документация краткая: `<summary>` в 1–2 строки на публичные контроллеры и их действия, интерфейсы сервисов, `Contracts`, DTO и сущности Domain. `<param>` и `<returns>` пишем, только если смысл неочевиден из имени. Пересказывать код в документации не нужно.
 - API — контроллеры с `[ApiController]`, маршруты `api/<module>/...`. Контроллер тонкий: принял запрос, вызвал сервис, вернул результат.
 - Бизнес-логика живёт в сервисах Application и методах сущностей Domain. В контроллерах, хабах и DbContext её нет.
-- DTO — `record`. Маппинг сущность ↔ DTO делаем через AutoMapper: у каждого модуля свой профиль в Application (`ProfilesMappingProfile : Profile`), регистрируется в `Add<Module>Module(...)`. В профилях только перекладывание полей, бизнес-логику туда не прячем. Если маппинг поля требует нетривиального `ForMember`, лучше посчитать значение в сервисе.
+- DTO — `record`. Маппинг сущность ↔ DTO делаем через AutoMapper 16.x (версии ниже 15.1.1 уязвимы, CVE-2026-32933; ключ Community-лицензии — `AutoMapper:LicenseKey` в user-secrets, задаётся один раз в Host): у каждого модуля свой профиль в Application (`ProfilesMappingProfile : Profile`), регистрируется в `Add<Module>Module(...)` через `services.AddAutoMapper(config => config.AddProfile<...>())`. В профилях только перекладывание полей, бизнес-логику туда не прячем. Если маппинг поля требует нетривиального `ForMember`, лучше посчитать значение в сервисе.
 - Валидация: DataAnnotations на DTO запросов, проверки бизнес-правил — в сервисах.
 - Ошибки: свои исключения (`NotFoundException`, `ValidationException`, `ForbiddenException`, `ConflictException`) лежат в `Shared/Exceptions`. В Host есть `ExceptionHandlingMiddleware`: он ловит исключение, по его типу выбирает статус-код (404 / 400 / 403 / 409, остальное — 500), пишет ошибку в лог и отвечает `ProblemDetails`. Стектрейс наружу не отдаём, в контроллерах `try/catch` ради статус-кодов не пишем.
-- Методы с I/O — `async`, с суффиксом `Async`; `CancellationToken` передаём от контроллера до EF.
+- Методы с I/O — `async`, с суффиксом `Async`; `CancellationToken` передаём от контроллера до EF. Действия контроллеров тоже с `Async` (в Host выключен `SuppressAsyncSuffixInActionNames`, поэтому `CreatedAtAction(nameof(GetMeAsync), ...)` работает).
+- Id текущего пользователя в контроллере — `User.GetUserId()` (Shared/Authentication, claim `sub`). Id передаём в сервис параметром.
 - DI: каждый модуль регистрируется своим методом `Add<Module>Module(this IServiceCollection, IConfiguration)`. Сервисы по умолчанию `Scoped`.
 - Логирование — `ILogger<T>`.
 
@@ -128,9 +129,10 @@ backend/dotnet/
 - Таблицы и колонки в snake_case (`UseSnakeCaseNamingConvention()`), PK — `id` типа `uuid` (`Guid`).
 - Моменты времени — `DateTime` в UTC (`timestamptz`); дата рождения — `DateOnly`; время рождения — `TimeOnly`; часовой пояс — IANA id (`Europe/Moscow`).
 - Схему меняем только миграциями EF, сгенерированные миграции без причины руками не правим. Изменение схемы сначала согласуй.
-- Миграция (из корня репозитория):
+- У каждого DbContext своя таблица истории миграций в своей схеме: `MigrationsHistoryTable("__ef_migrations_history", <схема>)`.
+- `dotnet-ef` — локальный инструмент (`dotnet tool restore`). Миграция (из корня репозитория):
   ```
-  dotnet ef migrations add <Имя> --context ProfilesDbContext --project backend/dotnet/Modules/Profiles/AstrologyMatches.Profiles.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api
+  dotnet ef migrations add <Имя> --context ProfilesDbContext --project backend/dotnet/Modules/Profiles/AstrologyMatches.Profiles.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api --output-dir Persistence/Migrations
   ```
 
 ### MinIO (изображения)
@@ -158,8 +160,8 @@ backend/dotnet/
 
 ## Тесты
 
-- xUnit, по тест-проекту на модуль; тестируем Domain и сервисы Application; моки — Moq.
-- На маппинг каждого модуля есть тест `MapperConfiguration.AssertConfigurationIsValid()`: он ловит поля DTO, которые AutoMapper не смог заполнить.
+- xUnit, по тест-проекту на модуль; тестируем Domain и сервисы Application; моки — Moq. DbContext в тестах сервисов — EF Core InMemory (своя БД на каждый тест), внешние зависимости (JWT, AstroService, MinIO) мокаем.
+- На маппинг каждого модуля есть тест `MapperConfiguration.AssertConfigurationIsValid()`: он ловит поля DTO, которые AutoMapper не смог заполнить. В AutoMapper 16 конструктору нужен логгер: `new MapperConfiguration(config => ..., NullLoggerFactory.Instance)`.
 - Новая логика или исправление бага идёт вместе с тестом. Прежде чем сказать «готово», собери проект и прогони тесты.
 
 ## Команды
@@ -167,7 +169,10 @@ backend/dotnet/
 Backend (из корня репозитория; подробности, в том числе запуск PostgreSQL и MinIO в Docker, — в `backend/dotnet/README.md`):
 
 ```
+dotnet tool restore
 dotnet user-secrets set "Jwt:Key" "<строка от 32 символов>" --project backend/dotnet/Host/AstrologyMatches.Api
+dotnet user-secrets set "ConnectionStrings:Database" "<строка подключения>" --project backend/dotnet/Host/AstrologyMatches.Api
+dotnet ef database update --context UsersDbContext --project backend/dotnet/Modules/Users/AstrologyMatches.Users.Infrastructure --startup-project backend/dotnet/Host/AstrologyMatches.Api
 dotnet build backend/dotnet
 dotnet test backend/dotnet
 dotnet run --project backend/dotnet/Host/AstrologyMatches.Api --launch-profile http
@@ -180,7 +185,7 @@ Swagger UI: http://localhost:5198/swagger, проверка живости: http
 ## Git
 
 - Ветки: `main` — стабильная, `develop` — интеграция, `feature/<имя>` — рабочие. PR открываем в `develop`.
-- Коммиты короткие, на английском, в повелительном наклонении (`Add profile API`).
+- Коммиты короткие, на русском языке. Заголовок начинается с глагола в инфинитиве и описывает, что делает коммит (`Добавить API профиля`). Детали, если нужны, пишем списком после пустой строки.
 - Агент не коммитит, не пушит и не мержит без явной просьбы и никогда не коммитит напрямую в `main` или `develop`.
 - `.github/workflows/` и `DockerConf/` ведёт devops-участник команды, `src/AstroService/` — другой участник. Без просьбы их не трогаем: наша зона — Web API (`backend/dotnet`).
 

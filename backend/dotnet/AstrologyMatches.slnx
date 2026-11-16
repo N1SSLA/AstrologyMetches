@@ -2,7 +2,16 @@
   <Folder Name="/Host/">
     <Project Path="Host/AstrologyMatches.Api/AstrologyMatches.Api.csproj" />
   </Folder>
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Users/">
+    <Project Path="Modules/Users/AstrologyMatches.Users.Application/AstrologyMatches.Users.Application.csproj" />
+    <Project Path="Modules/Users/AstrologyMatches.Users.Domain/AstrologyMatches.Users.Domain.csproj" />
+    <Project Path="Modules/Users/AstrologyMatches.Users.Infrastructure/AstrologyMatches.Users.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Shared/">
     <Project Path="Shared/AstrologyMatches.Shared/AstrologyMatches.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AstrologyMatches.Users.Tests/AstrologyMatches.Users.Tests.csproj" />
   </Folder>
 </Solution>
